@@ -21,9 +21,7 @@
 // on information passed back from the miniport driver.
 
 const DEVINFO gDevInfoFrameBuffer = {
-    ( GCAPS_OPAQUERECT
-    | GCAPS_LAYERED
-                   ), /* Graphics capabilities         */
+    0 , /* Graphics capabilities         */
     SYSTM_LOGFONT,    /* Default font description */
     HELVE_LOGFONT,    /* ANSI variable font description   */
     COURI_LOGFONT,    /* ANSI fixed font description          */
@@ -31,39 +29,15 @@ const DEVINFO gDevInfoFrameBuffer = {
     0,                /* Preferred DIB format          */
     8,                /* Width of color dither          */
     8,                /* Height of color dither   */
-    0                 /* Default palette to use for this device */
+    0,
+    GCAPS2_SYNCTIMER |
+    GCAPS2_SYNCFLUSH                /* Default palette to use for this device */
 };
 
 // This is default palette from Win 3.1
 
 #define NUMPALCOLORS 256
 #define NUMPALRESERVED 20
-
-ULONG palColors[NUMPALCOLORS][4] =
-{
-    { 0,   0,   0,   0  },  // 0
-    { 0x80,0,   0,   0  },  // 1
-    { 0,   0x80,0,   0  },  // 2
-    { 0x80,0x80,0,   0  },  // 3
-    { 0,   0,   0x80,0  },  // 4
-    { 0x80,0,   0x80,0  },  // 5
-    { 0,   0x80,0x80,0  },  // 6
-    { 0xC0,0xC0,0xC0,0  },  // 7
-
-    { 192, 220, 192, 0  },  // 8
-    { 166, 202, 240, 0  },  // 9
-    { 255, 251, 240, 0  },  // 10
-    { 160, 160, 164, 0  },  // 11
-
-    { 0x80,0x80,0x80,0  },  // 12
-    { 0xFF,0,   0,   0  },  // 13
-    { 0,   0xFF,0,   0  },  // 14
-    { 0xFF,0xFF,0,   0  },  // 15
-    { 0,   0,   0xFF,0  },  // 16
-    { 0xFF,0,   0xFF,0  },  // 17
-    { 0,   0xFF,0xFF,0  },  // 18
-    { 0xFF,0xFF,0xFF,0  }   // 19
-};
 
 /******************************Public*Routine******************************\
 * bInitPDEV
@@ -156,14 +130,14 @@ DEVINFO *pDevInfo)
     pGdiInfo->ciDevice.GreenGamma = 20000;
     pGdiInfo->ciDevice.BlueGamma = 20000;
 
-    pGdiInfo->ciDevice.Cyan.x = 0;
-    pGdiInfo->ciDevice.Cyan.y = 0;
+    pGdiInfo->ciDevice.Cyan.x = 1750;
+    pGdiInfo->ciDevice.Cyan.y = 3950;
     pGdiInfo->ciDevice.Cyan.Y = 0;
-    pGdiInfo->ciDevice.Magenta.x = 0;
-    pGdiInfo->ciDevice.Magenta.y = 0;
+    pGdiInfo->ciDevice.Magenta.x = 4050;
+    pGdiInfo->ciDevice.Magenta.y = 2050;
     pGdiInfo->ciDevice.Magenta.Y = 0;
-    pGdiInfo->ciDevice.Yellow.x = 0;
-    pGdiInfo->ciDevice.Yellow.y = 0;
+    pGdiInfo->ciDevice.Yellow.x = 4400;
+    pGdiInfo->ciDevice.Yellow.y = 5200;
     pGdiInfo->ciDevice.Yellow.Y = 0;
 
     // No dye correction for raster displays.
@@ -189,85 +163,21 @@ DEVINFO *pDevInfo)
 
     *pDevInfo = gDevInfoFrameBuffer;
 
-    // Fill in the rest of the devinfo and GdiInfo structures.
-#if (NTDDI_VERSION >= NTDDI_VISTA)
-    pDevInfo->flGraphicsCaps2 |= GCAPS2_INCLUDEAPIBITMAPS | GCAPS2_EXCLUDELAYERED;
-#endif
+    pGdiInfo->ulNumColors = 20;
+    pGdiInfo->ulNumPalReg = 256;
 
-    if (ppdev->ulBitCount == 8)
-    {
-        // It is Palette Managed.
-
-        pGdiInfo->ulNumColors = 20;
-        pGdiInfo->ulNumPalReg = 1 << ppdev->ulBitCount;
-
-        pDevInfo->flGraphicsCaps |= (GCAPS_PALMANAGED | GCAPS_COLOR_DITHER );
-
-        pGdiInfo->ulHTOutputFormat = HT_FORMAT_8BPP;
-        pDevInfo->iDitherFormat = BMF_8BPP;
-
-        // Assuming palette is orthogonal - all colors are same size.
-
-        ppdev->cPaletteShift   = 8 - pGdiInfo->ulDACRed;
-    }
-    else
-    {
-        pGdiInfo->ulNumColors = (ULONG) (-1);
-        pGdiInfo->ulNumPalReg = 0;
-
-        if (ppdev->ulBitCount == 16)
-        {
-            pGdiInfo->ulHTOutputFormat = HT_FORMAT_16BPP;
-            pDevInfo->iDitherFormat = BMF_16BPP;
-        }
-        else if (ppdev->ulBitCount == 24)
-        {
-            pGdiInfo->ulHTOutputFormat = HT_FORMAT_24BPP;
-            pDevInfo->iDitherFormat = BMF_24BPP;
-        }
-        else
-        {
-            pGdiInfo->ulHTOutputFormat = HT_FORMAT_32BPP;
-            pDevInfo->iDitherFormat = BMF_32BPP;
-        }
-    }
+    pGdiInfo->ulHTOutputFormat = HT_FORMAT_32BPP;
+    pDevInfo->iDitherFormat = BMF_32BPP;
 
 
-    pDevInfo->flGraphicsCaps |= (GCAPS_WINDINGFILL | GCAPS_GEOMETRICWIDE);
 
     // create remaining palette entries, simple loop to create uniformly
     // distributed color values.
 
     red = 0, green = 0, blue = 0;
     
-    for (i = NUMPALRESERVED; i < NUMPALCOLORS; i++) {
-        palColors[i][0] = red;
-        palColors[i][1] = green;
-        palColors[i][2] = blue;
-        palColors[i][3] = 0;
-
-        if (!(red += 32))
-            if (!(green += 32))
-                blue += 64;
-    }
-
-    if (ppdev->ulBitCount == 8)
-    {
-    pDevInfo->hpalDefault = ppdev->hpalDefault =
-       
-                  EngCreatePalette(PAL_INDEXED,
-                                   NUMPALCOLORS,     // cColors
-                                   (ULONG*)&palColors[0],       // pulColors
-                                   0,
-                                   0,
-                                   0);         // flRed, flGreen, flBlue [not used]
-    }
-    else
-    {
-        pDevInfo->hpalDefault = ppdev->hpalDefault =
-                EngCreatePalette(PAL_BITFIELDS, 0,NULL,
-                                 ppdev->flRed,ppdev->flBlue,ppdev->flGreen);
-    }
+    pDevInfo->hpalDefault = EngCreatePalette(PAL_BITFIELDS, 0, NULL, 0xFF0000, 0xFF00, 0xFF);
+  
 
     
     
