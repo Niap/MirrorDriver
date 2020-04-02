@@ -493,16 +493,17 @@ DrvEscape(SURFOBJ *pso,
 
 void DrvMovePointer(SURFOBJ  *pso, LONG  x, LONG  y, RECTL  *prcl)
 {
-    DISPDBG((0, "DrvMovePointer1 (%ld, %ld)\n" ,x,y));
-    //EngMovePointer(pso, x, y, prcl);
+
+    DISPDBG((1, "DrvMovePointer1 (%ld, %ld)\n" ,x,y));
+    
 }
 
 
 ULONG DrvSetPointerShape(SURFOBJ  *pso, SURFOBJ  *psoMask, SURFOBJ  *psoColor, XLATEOBJ  *pxlo, LONG  xHot, LONG  yHot, LONG  x, LONG  y, RECTL  *prcl, FLONG  fl)
 {
 
-    DISPDBG((0, "DrvSetPointerShape1 (%ld, %ld) (%ld, %ld)\n" ,x,y,yHot, yHot));
-    return SPS_ACCEPT_EXCLUDE;
+    DISPDBG((1, "DrvSetPointerShape1 (%ld, %ld) (%ld, %ld)\n" ,x,y,yHot, yHot));
+    return SPS_ACCEPT_NOEXCLUDE;
 }
 
 
